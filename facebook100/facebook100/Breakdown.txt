@@ -1,0 +1,319 @@
+Jupyter Server: local
+'Python Interactive': Idle
+[11]
+
+
+import os
+import numpy as np
+import pandas as pd
+[12]
+
+
+df = pd.read_csv("coast.csv")
+df.head(5)
+Type	Network Name	connection	nodes	edges	average shortest path(of subgraphs)	over-all average clusteringdegree	over-all median clusteringdegree	35% average clusteringdegree	35% median clusteringdegree	50% average clusteringdegree	50% median clusteringdegree	core number over medium	core_number average	Number of triangles	diameter	number of Communities	number of nodes in the largest community	Unnamed: 18	location
+0	undirected	1bingham82Rel	unconnected	10004	362894	2.477634	0.222889	0.183824	0.375593	0.318991	0.324402	0.273008	44.0	37.896441	7163862	NaN	9	1906	NaN	west coast
+1	undirected	2bowdoin47Rel	unconnected	2252	84387	2.223140	0.288719	0.268838	0.410020	0.364202	0.372620	0.333333	49.0	41.308615	2131455	NaN	7	698	NaN	east coast
+2	undirected	3brandeis99Rel	unconnected	3898	137567	1.981479	0.262103	0.235294	0.401298	0.343668	0.356770	0.307692	43.0	37.714726	3056655	NaN	12	1077	NaN	east coast
+3	undirected	4brown11Rel	unconnected	8600	384526	2.394555	0.217382	0.183333	0.351249	0.290967	0.305745	0.252714	56.0	46.908023	8858001	NaN	15	1856	NaN	west coast
+4	undirected	5bucknell39Rel	unconnected	3826	158864	2.139104	0.278460	0.248184	0.413032	0.359623	0.369063	0.322638	51.0	44.236539	3981768	NaN	7	883	NaN	east coast
+[13]
+
+
+columns = df.columns.tolist()
+data_train = df[[columns[i] for i in range(2, 18) if i != 15]].copy()
+data_label = df[columns[-1]].copy()
+[14]
+
+
+data_train.head(5)
+connection	nodes	edges	average shortest path(of subgraphs)	over-all average clusteringdegree	over-all median clusteringdegree	35% average clusteringdegree	35% median clusteringdegree	50% average clusteringdegree	50% median clusteringdegree	core number over medium	core_number average	Number of triangles	number of Communities	number of nodes in the largest community
+0	unconnected	10004	362894	2.477634	0.222889	0.183824	0.375593	0.318991	0.324402	0.273008	44.0	37.896441	7163862	9	1906
+1	unconnected	2252	84387	2.223140	0.288719	0.268838	0.410020	0.364202	0.372620	0.333333	49.0	41.308615	2131455	7	698
+2	unconnected	3898	137567	1.981479	0.262103	0.235294	0.401298	0.343668	0.356770	0.307692	43.0	37.714726	3056655	12	1077
+3	unconnected	8600	384526	2.394555	0.217382	0.183333	0.351249	0.290967	0.305745	0.252714	56.0	46.908023	8858001	15	1856
+4	unconnected	3826	158864	2.139104	0.278460	0.248184	0.413032	0.359623	0.369063	0.322638	51.0	44.236539	3981768	7	883
+[15]
+
+
+data_label.head(5)
+0    west coast
+1    east coast
+2    east coast
+3    west coast
+4    east coast
+Name: location, dtype: object
+[16]
+
+
+data_train_processed = data_train.replace("unconnected", 0)
+data_train_processed = data_train_processed.replace("disconnected", 0)
+data_train_processed = data_train_processed.replace("connected", 1)
+[17]
+
+
+data_train_processed.head(5)
+connection	nodes	edges	average shortest path(of subgraphs)	over-all average clusteringdegree	over-all median clusteringdegree	35% average clusteringdegree	35% median clusteringdegree	50% average clusteringdegree	50% median clusteringdegree	core number over medium	core_number average	Number of triangles	number of Communities	number of nodes in the largest community
+0	0	10004	362894	2.477634	0.222889	0.183824	0.375593	0.318991	0.324402	0.273008	44.0	37.896441	7163862	9	1906
+1	0	2252	84387	2.223140	0.288719	0.268838	0.410020	0.364202	0.372620	0.333333	49.0	41.308615	2131455	7	698
+2	0	3898	137567	1.981479	0.262103	0.235294	0.401298	0.343668	0.356770	0.307692	43.0	37.714726	3056655	12	1077
+3	0	8600	384526	2.394555	0.217382	0.183333	0.351249	0.290967	0.305745	0.252714	56.0	46.908023	8858001	15	1856
+4	0	3826	158864	2.139104	0.278460	0.248184	0.413032	0.359623	0.369063	0.322638	51.0	44.236539	3981768	7	883
+[18]
+
+
+data_label_processed = data_label.replace("west coast", 1)
+data_label_processed = data_label_processed.replace("east coast", 2)
+data_label_processed = data_label_processed.replace("middle", 0)
+[19]
+
+
+data_label_processed.head(5)
+0    1
+1    2
+2    2
+3    1
+4    2
+Name: location, dtype: int64
+[20]
+
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score
+[21]
+
+
+from imblearn.over_sampling import SMOTE
+[22]
+
+
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+for _ in range(7):
+    rnd = np.random.permutation(len(y_data))
+    X = X_data[rnd]
+    y = y_data[rnd]
+    total_scores.append(cross_val_score(KNeighborsClassifier(), X, y, cv=10))
+total_scores
+[array([0.71428571, 0.57142857, 0.57142857, 0.85714286, 0.71428571,
+        0.57142857, 0.71428571, 0.85714286, 0.85714286, 0.66666667]),
+ array([0.71428571, 0.71428571, 0.71428571, 0.71428571, 0.71428571,
+        0.57142857, 0.57142857, 0.42857143, 0.85714286, 0.5       ]),
+ array([0.71428571, 0.71428571, 0.57142857, 0.71428571, 0.71428571,
+        0.57142857, 0.57142857, 0.71428571, 0.71428571, 0.83333333]),
+ array([0.71428571, 0.57142857, 0.71428571, 0.57142857, 0.71428571,
+        0.71428571, 0.85714286, 0.85714286, 0.57142857, 0.66666667]),
+ array([0.71428571, 0.71428571, 0.71428571, 0.71428571, 0.42857143,
+        0.71428571, 0.57142857, 0.71428571, 0.28571429, 0.66666667]),
+ array([0.71428571, 0.85714286, 0.57142857, 0.71428571, 0.57142857,
+        0.42857143, 0.71428571, 0.57142857, 0.71428571, 0.66666667]),
+ array([0.57142857, 0.71428571, 0.57142857, 0.71428571, 0.71428571,
+        0.71428571, 0.71428571, 0.71428571, 0.85714286, 0.66666667])]
+[23]
+
+
+[x.mean() for x in total_scores]
+[0.7095238095238094,
+ 0.6499999999999999,
+ 0.6833333333333333,
+ 0.6952380952380952,
+ 0.6238095238095238,
+ 0.6523809523809524,
+ 0.6952380952380952]
+[24]
+
+
+a = [x.mean() for x in total_scores]
+sum(a) / len(a)
+0.6727891156462585
+[30]
+
+
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+sm = SMOTE(k_neighbors=2)
+X_data_res, y_data_res = sm.fit_resample(X_data, y_data)
+for _ in range(7):
+    rnd = np.random.permutation(len(y_data_res))
+    X = X_data_res[rnd]
+    y = y_data_res[rnd]
+    total_scores.append(cross_val_score(KNeighborsClassifier(), X, y, cv=10))
+
+[array([0.8       , 0.73333333, 0.86666667, 0.6       , 0.8       ,
+        0.8       , 0.73333333, 0.71428571, 0.85714286, 0.78571429]),
+ array([0.73333333, 0.8       , 0.66666667, 0.86666667, 0.8       ,
+        0.86666667, 0.73333333, 0.71428571, 0.78571429, 0.71428571]),
+ array([0.66666667, 0.73333333, 0.8       , 0.73333333, 0.86666667,
+        0.86666667, 0.86666667, 0.85714286, 0.64285714, 0.85714286]),
+ array([0.8       , 0.66666667, 0.73333333, 0.6       , 0.73333333,
+        0.86666667, 0.86666667, 0.78571429, 0.92857143, 0.85714286]),
+ array([0.8       , 0.93333333, 0.73333333, 0.53333333, 0.66666667,
+        1.        , 0.66666667, 0.71428571, 0.78571429, 0.85714286]),
+ array([0.6       , 0.8       , 0.8       , 0.8       , 0.66666667,
+        0.86666667, 0.73333333, 0.57142857, 0.78571429, 0.78571429]),
+ array([0.6       , 0.66666667, 0.8       , 0.8       , 0.93333333,
+        0.86666667, 0.8       , 0.78571429, 0.92857143, 0.64285714])]
+[31]
+
+
+a = [x.mean() for x in total_scores]
+sum(a) / len(a)
+0.7717687074829931
+[32]
+
+
+from imblearn.over_sampling import KMeansSMOTE, ADASYN, BorderlineSMOTE
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+sm = KMeansSMOTE(k_neighbors=2)
+X_data_res, y_data_res = sm.fit_resample(X_data, y_data)
+for _ in range(7):
+    rnd = np.random.permutation(len(y_data_res))
+    X = X_data_res[rnd]
+    y = y_data_res[rnd]
+
+[array([0.93333333, 0.86666667, 0.8       , 0.73333333, 0.8       ,
+        0.93333333, 0.73333333, 0.86666667, 0.86666667, 0.78571429]),
+ array([0.86666667, 0.8       , 0.86666667, 0.93333333, 0.73333333,
+        0.93333333, 0.86666667, 0.86666667, 0.8       , 0.71428571]),
+ array([0.73333333, 0.73333333, 0.86666667, 0.86666667, 0.86666667,
+        0.8       , 0.93333333, 0.8       , 0.86666667, 0.71428571]),
+ array([0.6       , 0.53333333, 0.86666667, 0.93333333, 0.93333333,
+        0.86666667, 0.8       , 0.86666667, 0.8       , 1.        ]),
+ array([0.93333333, 0.66666667, 0.93333333, 0.8       , 0.73333333,
+        0.8       , 0.73333333, 0.93333333, 1.        , 0.78571429]),
+ array([0.86666667, 0.86666667, 0.66666667, 0.8       , 0.93333333,
+        0.86666667, 0.73333333, 0.86666667, 0.8       , 0.85714286]),
+ array([0.8       , 0.86666667, 0.8       , 0.86666667, 0.93333333,
+        0.86666667, 0.8       , 0.8       , 0.86666667, 0.71428571])]
+[34]
+
+
+a = [x.mean() for x in total_scores]
+sum(a) / len(a)
+0.8281632653061225
+[35]
+
+
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+sm = ADASYN(n_neighbors=2)
+X_data_res, y_data_res = sm.fit_resample(X_data, y_data)
+for _ in range(7):
+    rnd = np.random.permutation(len(y_data_res))
+    X = X_data_res[rnd]
+    y = y_data_res[rnd]
+    total_scores.append(cross_val_score(KNeighborsClassifier(), X, y, cv=10))
+
+[array([0.6       , 0.86666667, 0.53333333, 0.73333333, 0.6       ,
+        0.86666667, 0.73333333, 0.64285714, 0.71428571, 0.78571429]),
+ array([0.93333333, 0.73333333, 0.46666667, 0.73333333, 0.6       ,
+        0.66666667, 0.6       , 0.78571429, 0.57142857, 0.85714286]),
+ array([0.73333333, 0.8       , 0.73333333, 0.53333333, 0.73333333,
+        0.53333333, 0.8       , 0.64285714, 0.64285714, 0.64285714]),
+ array([0.86666667, 0.6       , 0.66666667, 0.46666667, 0.73333333,
+        0.8       , 0.6       , 0.71428571, 0.78571429, 0.85714286]),
+ array([0.66666667, 0.53333333, 0.66666667, 0.73333333, 0.73333333,
+        0.86666667, 0.66666667, 0.71428571, 0.78571429, 0.5       ]),
+ array([0.66666667, 0.66666667, 0.53333333, 0.73333333, 0.66666667,
+        0.6       , 1.        , 0.71428571, 0.57142857, 0.71428571]),
+ array([0.66666667, 0.73333333, 0.6       , 0.6       , 0.8       ,
+        0.66666667, 0.73333333, 0.71428571, 0.64285714, 0.78571429])]
+[-]
+
+
+a = [x.mean() for x in total_scores]
+sum(a) / len(a)
+[37]
+
+
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+sm = BorderlineSMOTE(k_neighbors=2)
+X_data_res, y_data_res = sm.fit_resample(X_data, y_data)
+for _ in range(7):
+    rnd = np.random.permutation(len(y_data_res))
+    X = X_data_res[rnd]
+    y = y_data_res[rnd]
+    total_scores.append(cross_val_score(KNeighborsClassifier(), X, y, cv=10))
+
+[array([0.8       , 0.66666667, 0.73333333, 0.8       , 0.66666667,
+        0.73333333, 0.66666667, 0.71428571, 0.64285714, 0.78571429]),
+ array([0.73333333, 0.8       , 0.53333333, 0.86666667, 0.8       ,
+        0.73333333, 0.8       , 0.78571429, 0.85714286, 0.71428571]),
+ array([0.73333333, 0.73333333, 0.86666667, 0.66666667, 0.66666667,
+        0.66666667, 0.73333333, 0.78571429, 0.85714286, 0.78571429]),
+ array([0.66666667, 0.86666667, 0.66666667, 0.8       , 0.6       ,
+        0.86666667, 0.73333333, 0.78571429, 0.71428571, 0.85714286]),
+ array([0.73333333, 0.86666667, 0.73333333, 0.66666667, 0.73333333,
+        0.8       , 0.73333333, 0.57142857, 0.78571429, 0.71428571]),
+ array([0.66666667, 0.86666667, 0.6       , 0.86666667, 0.8       ,
+        0.6       , 0.6       , 0.71428571, 0.85714286, 0.85714286]),
+ array([0.73333333, 0.66666667, 0.73333333, 0.8       , 0.8       ,
+        0.73333333, 0.73333333, 0.78571429, 0.5       , 0.92857143])]
+[36]
+
+
+a = [x.mean() for x in total_scores]
+sum(a) / len(a)
+0.6940816326530612
+[41]
+
+
+data_label.unique()
+array(['west coast', 'east coast', 'middle'], dtype=object)
+[47]
+
+
+data_label_processed
+0     1
+1     2
+2     2
+3     1
+4     2
+     ..
+64    1
+65    1
+66    1
+67    2
+68    2
+Name: location, Length: 69, dtype: int64
+[49]
+
+
+d_west_idx = [i for (i,j) in enumerate(data_label_processed.tolist()) if j == 1]
+d_east_idx = [i for (i,j) in enumerate(data_label_processed.tolist()) if j == 2]
+d_middle_idx = [i for (i,j) in enumerate(data_label_processed.tolist()) if j == 0]
+[57]
+
+
+data_train_processed_west = data_train_processed.to_numpy()[d_west_idx]
+data_label_processed_west = data_label_processed.to_numpy()[d_west_idx]
+data_train_processed_east = data_train_processed.to_numpy()[d_east_idx]
+data_label_processed_east = data_label_processed.to_numpy()[d_east_idx]
+data_train_processed_middle = data_train_processed.to_numpy()[d_middle_idx]
+data_label_processed_middle = data_label_processed.to_numpy()[d_middle_idx]
+[62]
+
+
+total_scores = []
+X_data = data_train_processed.to_numpy()
+y_data = data_label_processed.to_numpy()
+sm = KMeansSMOTE(k_neighbors=2)
+X_data_res, y_data_res = sm.fit_resample(X_data, y_data)
+for _ in range(10):
+    rnd = np.random.permutation(len(y_data_res))
+    X = X_data_res[rnd]
+    y = y_data_res[rnd]
+    scores = cross_val_score(KNeighborsClassifier(), X, y, cv=7)
+
+Average Accuracy: 0.8302411873840445
+Break down
+West: 0.4375
+East: 0.8367346938775511
+Middle: 0.75
